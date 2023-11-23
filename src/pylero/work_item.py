@@ -1584,23 +1584,28 @@ class _SpecificWorkItem(_WorkItem):
         self._changed_fields = {}
 
 
+def create_classes_from_actual_work_items():
+    cfg = Configuration()
+    bp = BasePolarion()
+    vals = bp.get_valid_field_values("workitem-type")
+    workitems = {}
+    for item in bp._cache["enums"]["workitem-type"][None]:
+        workitems[item.id] = item.name.replace(" ", "").replace("/", "")
+
+    for wi in workitems:
+        newclass = type(
+            str(workitems[wi]),
+            (_SpecificWorkItem,),
+            {
+                "_wi_type": wi,
+                "_cls_suds_map": copy.deepcopy(_SpecificWorkItem._cls_suds_map),
+            },
+        )
+        # Add the class to the module's namespace
+        globals()[str(workitems[wi])] = newclass
+
+
 # On import of the module, it will connect to the server
 # and get a list of the workitem types and create those classes.
-cfg = Configuration()
-bp = BasePolarion()
-vals = bp.get_valid_field_values("workitem-type")
-workitems = {}
-for item in bp._cache["enums"]["workitem-type"][None]:
-    workitems[item.id] = item.name.replace(" ", "").replace("/", "")
-
-for wi in workitems:
-    newclass = type(
-        str(workitems[wi]),
-        (_SpecificWorkItem,),
-        {
-            "_wi_type": wi,
-            "_cls_suds_map": copy.deepcopy(_SpecificWorkItem._cls_suds_map),
-        },
-    )
-    # Add the class to the module's namespace
-    globals()[str(workitems[wi])] = newclass
+if os.getenv('PYLERO_PREVENT_WORK_ITEMS_CLASSES_AUTO_CREATION') is None:
+    create_classes_from_actual_work_items
